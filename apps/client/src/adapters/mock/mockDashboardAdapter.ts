@@ -9,7 +9,7 @@ import { clone, delay } from './mockUtils';
 
 export function createMockDashboardAdapter(): DashboardAdapter {
   return {
-    async getOverview(): Promise<DashboardOverview> {
+    async getOverview(_siteId?: string): Promise<DashboardOverview> {
       await delay(400);
       return clone(dashboardOverview);
     },

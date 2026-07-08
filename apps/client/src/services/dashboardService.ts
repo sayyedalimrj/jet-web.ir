@@ -16,16 +16,19 @@ export interface OverviewSeriesResponse {
 }
 
 export const dashboardService = {
-  getOverview(): Promise<DashboardOverview> {
-    return getAdapters().dashboard.getOverview();
+  getOverview(siteId?: string): Promise<DashboardOverview> {
+    return getAdapters().dashboard.getOverview(siteId);
   },
 
-  async getOverviewSeries(range: '7d' | '30d' | '90d' = '7d'): Promise<OverviewSeriesResponse | null> {
+  async getOverviewSeries(
+    range: '7d' | '30d' | '90d' = '7d',
+    siteId?: string,
+  ): Promise<OverviewSeriesResponse | null> {
     if (!isApiConfigured()) return null;
-    const siteId = getActiveHttpSiteId();
-    if (!siteId) return null;
+    const id = siteId ?? getActiveHttpSiteId();
+    if (!id) return null;
     return http.get<OverviewSeriesResponse>(
-      `/merchant/sites/${siteId}/reports/overview-series?range=${range}`,
+      `/merchant/sites/${id}/reports/overview-series?range=${range}`,
     );
   },
 };

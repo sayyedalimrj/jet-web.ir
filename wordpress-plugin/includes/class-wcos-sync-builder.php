@@ -178,9 +178,64 @@ if (!class_exists('WCOS_Sync_Builder')) {
             ));
             $items = array();
             foreach ($products as $p) {
-                $items[] = self::map_product($p, $currency);
+                $items[] = self::map_product_sync($p, $currency);
             }
             return $items;
+        }
+
+        /**
+         * Lightweight product map for chunked sync — omits variations/meta/heavy fields so each
+         * chunk stays small and fast while preserving catalog + stock essentials.
+         *
+         * @return array<string,mixed>
+         */
+        private static function map_product_sync($p, $currency) {
+            $cats = array();
+            foreach ($p->get_category_ids() as $cid) {
+                $term = get_term($cid, 'product_cat');
+                if ($term && !is_wp_error($term)) {
+                    $cats[] = array('externalId' => (string) $term->term_id, 'name' => $term->name, 'slug' => $term->slug);
+                }
+            }
+            $tags = array();
+            foreach ($p->get_tag_ids() as $tid) {
+                $term = get_term($tid, 'product_tag');
+                if ($term && !is_wp_error($term)) {
+                    $tags[] = array('externalId' => (string) $term->term_id, 'name' => $term->name, 'slug' => $term->slug);
+                }
+            }
+            $images = array();
+            $thumb  = wp_get_attachment_image_src($p->get_image_id(), 'woocommerce_thumbnail');
+            if ($thumb) {
+                $images[] = array(
+                    'externalId' => (string) $p->get_image_id(),
+                    'src'        => $thumb[0],
+                    'alt'        => get_post_meta($p->get_image_id(), '_wp_attachment_image_alt', true),
+                    'position'   => 0,
+                );
+            }
+            return array(
+                'externalId'        => (string) $p->get_id(),
+                'name'              => $p->get_name(),
+                'slug'              => $p->get_slug(),
+                'permalink'         => $p->get_permalink(),
+                'sku'               => $p->get_sku(),
+                'status'            => $p->get_status(),
+                'type'              => $p->get_type(),
+                'regularPriceMinor' => self::to_minor($p->get_regular_price(), $currency),
+                'salePriceMinor'    => $p->get_sale_price() !== '' ? self::to_minor($p->get_sale_price(), $currency) : null,
+                'priceMinor'        => self::to_minor($p->get_price(), $currency),
+                'currency'          => $currency,
+                'stockStatus'       => $p->get_stock_status(),
+                'stockQty'          => $p->managing_stock() ? (int) $p->get_stock_quantity() : null,
+                'manageStock'       => $p->managing_stock(),
+                'categories'        => $cats,
+                'tags'              => $tags,
+                'images'            => $images,
+                'variations'        => array(),
+                'totalSales'        => (int) $p->get_total_sales(),
+                'dateModified'      => $p->get_date_modified() ? $p->get_date_modified()->date('c') : null,
+            );
         }
 
         /** @return array<string,mixed> */

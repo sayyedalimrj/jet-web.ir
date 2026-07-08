@@ -20,17 +20,17 @@ interface SiteOverview {
 
 export function createHttpDashboardAdapter(): DashboardAdapter {
   return {
-    async getOverview(): Promise<DashboardOverview> {
-      const siteId = getActiveHttpSiteId();
-      if (!siteId) throw new Error('هیچ فروشگاهی انتخاب نشده است.');
+    async getOverview(siteId?: string): Promise<DashboardOverview> {
+      const id = siteId ?? getActiveHttpSiteId();
+      if (!id) throw new Error('هیچ فروشگاهی انتخاب نشده است.');
 
       const [overviewRes, ordersRes, productsRes] = await Promise.all([
         http.get<{ site: { currency: string }; overview: SiteOverview }>(
-          `/merchant/sites/${siteId}/overview`,
+          `/merchant/sites/${id}/overview`,
         ),
-        http.get<{ items: BackendOrder[] }>(`/merchant/sites/${siteId}/orders${qs({ pageSize: 10 })}`),
+        http.get<{ items: BackendOrder[] }>(`/merchant/sites/${id}/orders${qs({ pageSize: 10 })}`),
         http.get<{ items: BackendProduct[] }>(
-          `/merchant/sites/${siteId}/products${qs({ pageSize: 50 })}`,
+          `/merchant/sites/${id}/products${qs({ pageSize: 50 })}`,
         ),
       ]);
 

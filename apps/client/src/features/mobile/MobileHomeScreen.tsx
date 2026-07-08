@@ -19,6 +19,7 @@ import { EmptyState, LoadingState, Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
 import { triggerSiteSync, wooConnectErrorMessage } from '@/services/connectionApi';
 import { dashboardService } from '@/services';
+import { currencyExponent } from '@/domain/money';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useActiveSite, useSites } from '@/features/site/useSites';
@@ -184,14 +185,18 @@ function OverviewSection({
   const rangeKey = range === 'week' ? '7d' : range === 'year' ? '90d' : '30d';
   const seriesQuery = useQuery({
     queryKey: ['site', siteId, 'overview-series', rangeKey, metric],
-    queryFn: () => dashboardService.getOverviewSeries(rangeKey as '7d' | '30d' | '90d'),
+    queryFn: () => dashboardService.getOverviewSeries(rangeKey as '7d' | '30d' | '90d', siteId),
     enabled: !showcase && Boolean(siteId),
   });
   const sync = useMutation({
     mutationFn: () => triggerSiteSync(siteId as string),
     onSuccess: async () => {
       setSyncNote(t('home.overview.syncStarted'));
-      if (siteId) await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'dashboard'] });
+      if (siteId) {
+        await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'dashboard'] });
+        await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'overview-series'] });
+        await queryClient.invalidateQueries({ queryKey: ['dashboard', 'overview', siteId] });
+      }
     },
     onError: (e: unknown) => setSyncNote(wooConnectErrorMessage(e)),
   });
@@ -206,6 +211,9 @@ function OverviewSection({
           ? fmt.num(overview?.ordersCount ?? 0)
           : fmt.num(overview?.customersCount ?? 0);
 
+    const chartCurrency = seriesQuery.data?.currency ?? overview?.currency ?? currency;
+    const revenueDivisor = 10 ** currencyExponent(chartCurrency);
+
     const salesRows = seriesQuery.data?.sales ?? [];
     const customerRows = seriesQuery.data?.customers ?? [];
     const chartSource =
@@ -215,10 +223,10 @@ function OverviewSection({
           ? salesRows.map((r) => ({ label: String(r.day).slice(5, 10), value: Number(r.orders) }))
           : salesRows.map((r) => ({
               label: String(r.day).slice(5, 10),
-              value: Number(r.revenue_minor) / 100,
+              value: Number(r.revenue_minor) / revenueDivisor,
             }));
 
-    const hasChart = chartSource.length > 0;
+    const hasChart = seriesQuery.isSuccess && chartSource.some((row) => row.value > 0);
     const points: OverviewPoint[] = chartSource.map((row, index) => ({
       label: row.label,
       value: row.value,
@@ -435,8 +443,8 @@ export function MobileHomeScreen(): React.JSX.Element {
   // Real, synced overview (production only). Drives real counts + headline totals; never faked.
   const { data: overview } = useQuery({
     queryKey: ['dashboard', 'overview', selectedSite?.id ?? 'none'],
-    queryFn: () => dashboardService.getOverview(),
-    enabled: !showcase && hasSites,
+    queryFn: () => dashboardService.getOverview(selectedSite?.id),
+    enabled: !showcase && hasSites && Boolean(selectedSite?.id),
   });
 
   const renewalFor = (site: SiteConnection): string | undefined => {

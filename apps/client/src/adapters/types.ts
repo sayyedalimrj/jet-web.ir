@@ -117,7 +117,7 @@ export interface SiteAdapter {
 
 export interface DashboardAdapter {
   /** Overview ("operating home") for the active site. */
-  getOverview(): Promise<DashboardOverview>;
+  getOverview(siteId?: string): Promise<DashboardOverview>;
 }
 
 export interface ProductAdapter {

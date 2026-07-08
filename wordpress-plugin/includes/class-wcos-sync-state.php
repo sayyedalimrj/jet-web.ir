@@ -23,8 +23,8 @@ if (!class_exists('WCOS_Sync_State')) {
 
         /** @return int */
         public static function batch_size() {
-            $size = (int) get_option('wcos_sync_batch_size', 25);
-            return max(5, min(100, $size));
+            $size = (int) get_option('wcos_sync_batch_size', 50);
+            return max(10, min(100, $size));
         }
 
         /**

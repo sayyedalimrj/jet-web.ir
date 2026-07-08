@@ -25,18 +25,18 @@ if (!class_exists('WCOS_Sync_Engine')) {
             add_action(self::HOOK_HEALTH, array(__CLASS__, 'run_health'));
         }
 
-        /** Schedule the full sync queue (non-blocking). */
+        /** Schedule the full sync queue (non-blocking). Orders first so dashboard charts populate sooner. */
         public static function schedule_full_sync() {
             WCOS_Sync_State::start_full_sync_queue(
-                array('categories', 'products', 'orders', 'customers', 'coupons')
+                array('orders', 'customers', 'products', 'categories', 'coupons')
             );
-            self::schedule_chunk(5);
+            self::schedule_chunk(2);
         }
 
         /** Schedule incremental sync for high-churn entities. */
         public static function schedule_incremental_sync() {
-            WCOS_Sync_State::start_full_sync_queue(array('products', 'orders', 'customers', 'coupons'));
-            self::schedule_chunk(30);
+            WCOS_Sync_State::start_full_sync_queue(array('orders', 'products', 'customers', 'coupons'));
+            self::schedule_chunk(5);
         }
 
         /**
@@ -93,7 +93,7 @@ if (!class_exists('WCOS_Sync_Engine')) {
             $has_more = !empty($result['hasMore']);
             if ($has_more) {
                 WCOS_Sync_State::set_cursor($entity, $page + 1);
-                self::schedule_chunk(10);
+                self::schedule_chunk(3);
                 return;
             }
 
@@ -102,7 +102,7 @@ if (!class_exists('WCOS_Sync_Engine')) {
             update_option(WCOS_Sync_State::OPT_QUEUE, $queue, false);
 
             if (!empty($queue)) {
-                self::schedule_chunk(5);
+                self::schedule_chunk(2);
             } else {
                 WCOS_Sync_State::clear_run_id();
             }

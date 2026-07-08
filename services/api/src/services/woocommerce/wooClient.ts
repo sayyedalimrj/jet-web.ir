@@ -340,6 +340,7 @@ export interface ListQuery {
   pageSize?: number;
   search?: string;
   status?: string;
+  stockStatus?: string;
 }
 
 function pageParams(q: ListQuery): { page: number; per_page: number } {
@@ -385,6 +386,7 @@ export async function listProducts(
     per_page,
     search: q.search,
     status: q.status,
+    stock_status: q.stockStatus,
   });
   const rows = Array.isArray(json) ? json : [];
   return {
